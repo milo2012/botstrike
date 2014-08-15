@@ -1,0 +1,27 @@
+::Cisco
+::Cisco router
+::_Cisco
+::cc
+::changeit
+::cisco
+:Administrator:admin
+:Cisco:Cisco
+:admin:
+:admin:admin
+:admin:changeme
+:admin:cisco
+:admin:default
+:admin:diamond
+:cisco:cisco
+:cmaker:cmaker
+:enable:cisco
+:guest:
+:has:hsadb
+:netrangr:attack
+:ripeop:
+:root:Cisco
+:root:attack
+:root:blender
+:root:default
+:root:secur4u
+:wlse:wlsedb

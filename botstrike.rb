@@ -21,6 +21,7 @@ require 'rubygems'
 require 'optparse'
 require 'msfrpc-client'
 require 'rex/ui'
+require "thor"
 
 class Color
 	extend Term::ANSIColor
@@ -49,6 +50,50 @@ $blackList<<'172.16.91.2'
 $blackList<<'172.16.91.254'
 
 log = Logger.new('debug.log')
+
+def runMedusa()
+=begin
+#To be used with Medusa
+#http://www.cirt.net/passwords
+
+#Cisco Default Passwords
+:admin:admin
+:admin:
+:root:secur4u
+:cisco:cisco
+::changeit
+:wlse:wlsedb
+:root:blender
+:root:attack
+:netrangr:attack
+::cisco
+:has:hsadb
+:admin:default
+:admin:diamond
+::Cisco
+:Cisco:Cisco
+:root:Cisco
+::_Cisco
+:Administrator:admin
+:guest:
+:admin:cisco
+:cmaker:cmaker
+:ripeop:
+:enable:cisco
+::cc
+::Cisco router
+:admin:changeme
+
+#F5 Default Passwords
+:root:default
+=end
+
+end 
+
+def findMSSQL()
+	cmd = 'python2.7 /pentest/Responder/FindSQLSrv.py'
+	results = timeout_cmd(cmd,timeout)
+end
 
 def setup()
 	#Creates Evasion Metasploit Payload using Veil-Evasion
@@ -1053,6 +1098,7 @@ def runMsf(ipAddr,portList)
 					puts x
 				end
 			end
+		end
 	end
 end
 
@@ -2061,12 +2107,12 @@ def runScan()
 				if not $blackList.include? x
 					portList=runNmap(x)
 					if portList.length>0
+						#Tasks to run after detecting host in network
 						puts "run prepareMsf"
 						runMsf(x,portList)
 						#here
 						#prepareMsfResource(x,portList)
-					end
-					#for y in portList
+					for y in portList
 						#if y==5432
 						#	puts '\nrunPostgreSQL'
 						#end
@@ -2077,16 +2123,18 @@ def runScan()
 						#	puts "\nrunSMB"
 						#	runSMB(x)
 						#end
-						#if y==22
-						#	puts '\nrunSSH'
-						#end
+						if y==22
+							puts '\nrunMedusa'
+							sshBrute()
+						end
 						#if y==21
 						#	puts '\nrunFTP'
 						#end
 						#if y==23
 						#	puts '\nrunTelnet'
 						#end
-					#end
+					#end					e
+					end
 				end
 			}
 		end
@@ -2392,6 +2440,16 @@ def sniff(iface)
    end
 end
 #setup()
+
+#class MyApp < Thor
+#  desc: "Say Hello"
+#  method_option :name, :aliases => "-n", :desc => "Specify a name"
+#  def hello
+#    puts "Hello #{options[:name]}"
+#  end
+#end
+
+
 system('rm -rf database.db')
 sleep(1)
 createDatabase()
